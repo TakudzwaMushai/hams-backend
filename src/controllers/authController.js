@@ -87,6 +87,7 @@ exports.signup = async (req, res) => {
 };
 
 exports.login = async (req, res) => {
+  console.log("ENV MODE:", process.env.NODE_ENV);
   try {
     const { email, password } = req.body;
 
@@ -132,6 +133,6 @@ exports.login = async (req, res) => {
   } catch (err) {
     console.error("Login error:", err);
 
-    res.status(500).json({ message: !process.env.JWT_SECRET ? "Server error during login" : "" });
+    res.status(500).json({ message: "Server error during login" });
   }
 };
