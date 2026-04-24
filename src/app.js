@@ -20,15 +20,6 @@ app.get("/", (req, res) => res.json({ message: "HAMS API running" }));
 
 // module.exports = app;
 
-// Error handling middleware
-app.use((error, req, res, next) => {
-  console.log(error);
-  const status = error.statusCode || 500;
-  const message = error.message;
-  const data = error.data;
-  res.status(status).json({ message: message, data: data });
-});
-
 // MongoDB connection
 mongoose
   .connect(process.env.MONGODB_URI)
