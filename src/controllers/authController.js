@@ -10,13 +10,11 @@ exports.signup = async (req, res) => {
             date_of_birth, gender, nhs_number, address,
             specialisation, license_number } = req.body;
 
-    // Check if user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(409).json({ message: 'Email already registered' });
     }
 
-    // Hash password
     const password_hash = await bcrypt.hash(password, 12);
 
     let profile = null;
@@ -35,7 +33,6 @@ exports.signup = async (req, res) => {
       return res.status(400).json({ message: 'Role must be patient or doctor' });
     }
 
-    // Create user account linked to the profile
     const user = await User.create({
       email,
       password_hash,
@@ -44,7 +41,6 @@ exports.signup = async (req, res) => {
       ref_type: role === 'patient' ? 'Patient' : 'Doctor'
     });
 
-    // Sign JWT
     const token = jwt.sign(
       { id: user._id, role: user.role },
       process.env.JWT_SECRET,
@@ -65,5 +61,55 @@ exports.signup = async (req, res) => {
   } catch (err) {
     console.error('Signup error:', err);
     res.status(500).json({ message: 'Server error during signup' });
+  }
+};
+
+exports.login = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    // Find user
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(401).json({ message: 'Invalid email or password' });
+    }
+
+    // Check password
+    const isMatch = await bcrypt.compare(password, user.password_hash);
+    if (!isMatch) {
+      return res.status(401).json({ message: 'Invalid email or password' });
+    }
+
+    // Update last_login
+    user.last_login = new Date();
+    await user.save();
+
+    // Fetch profile (patient or doctor)
+    const profile = await (user.ref_type === 'Patient' ? Patient : Doctor)
+      .findById(user.ref_id)
+      .select('-__v');
+
+    // Sign JWT
+    const token = jwt.sign(
+      { id: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRES_IN }
+    );
+
+    res.status(200).json({
+      message: 'Login successful',
+      token,
+      user: {
+        id:         user._id,
+        email:      user.email,
+        role:       user.role,
+        last_login: user.last_login,
+        profile
+      }
+    });
+
+  } catch (err) {
+    console.error('Login error:', err);
+    res.status(500).json({ message: 'Server error during login' });
   }
 };
