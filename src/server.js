@@ -6,4 +6,6 @@ const PORT = process.env.PORT || 5000;
 
 connectDB();
 
-module.exports = app;
+module.exports = (req, res) => {
+  app(req, res);
+};
