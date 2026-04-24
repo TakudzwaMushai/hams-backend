@@ -22,7 +22,7 @@ app.get("/", (req, res) => res.json({ message: "HAMS API running" }));
 
 // MongoDB connection
 mongoose
-  .connect(process.env.MONGODB_URI)
+  .connect(process.env.MONGO_URI)
   .then((result) => {
     app.listen(process.env.PORT || 5000);
     console.log("Server started");
