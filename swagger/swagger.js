@@ -9,11 +9,11 @@ const swaggerDocument = {
   },
   servers: [
     {
-      url: 'https://hams-backend.vercel.app/api',
+      url: 'https://hams-backend.vercel.app',
       description: 'Production'
     },
     {
-      url: 'http://localhost:5000/api',
+      url: 'http://localhost:5000',
       description: 'Local'
     }
   ],
