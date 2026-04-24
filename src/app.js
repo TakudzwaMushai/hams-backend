@@ -24,11 +24,11 @@ app.get("/", (req, res) => res.json({ message: "HAMS API running" }));
 mongoose
   .connect(process.env.MONGO_URI)
   .then((result) => {
-    app.listen(process.env.PORT || 5000);
+    // app.listen(process.env.PORT || 5000);
     console.log("Server started");
   })
   .catch((error) => {
     console.log(error);
   });
 
-// export default app;
+export default app;
