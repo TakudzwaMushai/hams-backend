@@ -18,4 +18,4 @@ app.use("/api/auth", authRoutes);
 
 app.get("/", (req, res) => res.json({ message: "HAMS API running" }));
 
-module.exports = app;
+// module.exports = app;
