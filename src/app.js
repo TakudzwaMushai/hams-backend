@@ -4,7 +4,7 @@ const cors = require("cors");
 const helmet = require("helmet");
 const morgan = require("morgan");
 const mongoose = require("mongoose");
-const { swaggerUi, swaggerDocument } = require("./swagger/swagger");
+const { swaggerUi, swaggerDocument } = require("../swagger/swagger");
 
 const app = express();
 
