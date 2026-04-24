@@ -11,4 +11,38 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
-paths: {}
+paths:
+  /auth/signup:
+    post:
+      summary: Register a new patient or doctor
+      tags:
+        - Auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password, role, first_name, last_name]
+              properties:
+                email: { type: string, example: jane@example.com }
+                password: { type: string, example: SecurePass123 }
+                role: { type: string, enum: [patient, doctor] }
+                first_name: { type: string, example: Jane }
+                last_name: { type: string, example: Smith }
+                phone: { type: string, example: "+44 7700 900001" }
+                date_of_birth:
+                  { type: string, format: date, example: "1992-03-22" }
+                gender: { type: string, enum: [male, female, other] }
+                nhs_number: { type: string, example: "485 777 3457" }
+                specialisation: { type: string, example: General Practitioner }
+                license_number: { type: string, example: GMC-1234567 }
+      responses:
+        "201":
+          description: Account created successfully
+        "409":
+          description: Email already registered
+        "422":
+          description: Validation errors
+        "500":
+          description: Server error
