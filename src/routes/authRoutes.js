@@ -3,7 +3,14 @@ const router = express.Router();
 const { body } = require("express-validator");
 const validate = require("../middleware/validate");
 const auth = require("../middleware/authMiddleware");
-const { signup, login, logout, me } = require("../controllers/authController");
+const {
+  signup,
+  login,
+  logout,
+  me,
+  forgotPassword,
+  resetPassword,
+} = require("../controllers/authController");
 
 const signupValidation = [
   body("email").isEmail().withMessage("Valid email required"),
@@ -22,9 +29,22 @@ const loginValidation = [
   body("password").notEmpty().withMessage("Password is required"),
 ];
 
+const forgotValidation = [
+  body("email").isEmail().withMessage("Valid email required"),
+];
+
+const resetValidation = [
+  body("token").notEmpty().withMessage("Reset token is required"),
+  body("password")
+    .isLength({ min: 8 })
+    .withMessage("Password must be at least 8 characters"),
+];
+
 router.post("/signup", signupValidation, validate, signup);
 router.post("/login", loginValidation, validate, login);
 router.post("/logout", auth, logout);
 router.get("/me", auth, me);
+router.post("/forgot-password", forgotValidation, validate, forgotPassword);
+router.post("/reset-password", resetValidation, validate, resetPassword);
 
 module.exports = router;
