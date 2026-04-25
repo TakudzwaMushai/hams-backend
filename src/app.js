@@ -11,7 +11,7 @@ const app = express();
 app.use(helmet());
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || "http://localhost:3000",
+    origin: process.env.FRONTEND_URL,
     credentials: true,
   }),
 );
@@ -36,23 +36,6 @@ const authRoutes = require("./routes/authRoutes");
 app.use("/api/auth", authRoutes);
 
 app.get("/", (req, res) => res.json({ message: "HAMS API running" }));
-
-app.get("/test-email", async (req, res) => {
-  try {
-    const nodemailer = require("nodemailer");
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: "takudzwamushai@gmail.com",
-        pass: "dagc luig bnvm zxvg",
-      },
-    });
-    await transporter.verify();
-    res.json({ message: "SMTP connection successful" });
-  } catch (err) {
-    res.status(500).json({ message: err.message, code: err.code });
-  }
-});
 
 // Log URI presence without exposing the value
 console.log("MONGO_URI set:", !!process.env.MONGO_URI);
