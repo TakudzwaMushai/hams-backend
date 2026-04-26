@@ -1,9 +1,9 @@
+jest.mock('../../../src/utils/sendEmail', () => jest.fn().mockResolvedValue(true));
+
 const request = require('supertest');
 const app     = require('../../../src/app');
 const db      = require('../../setup/db');
 const User    = require('../../../src/models/User');
-
-jest.mock('../../../src/utils/sendEmail', () => jest.fn().mockResolvedValue(true));
 
 beforeAll(async () => await db.connect());
 afterEach(async () => await db.clearCollections());
@@ -18,7 +18,6 @@ describe('POST /api/auth/login', () => {
     last_name:  'Smith'
   };
 
-  // Helper — signup and verify
   const signupAndVerify = async () => {
     await request(app).post('/api/auth/signup').send(user);
     await User.updateOne(
@@ -34,9 +33,11 @@ describe('POST /api/auth/login', () => {
       password: user.password
     });
     expect(res.status).toBe(200);
-    expect(res.body.token).toBeDefined();
     expect(res.body.user.email).toBe(user.email);
     expect(res.body.user.profile).toBeDefined();
+    // Tokens in cookies not body
+    expect(res.body.token).toBeUndefined();
+    expect(res.headers['set-cookie']).toBeDefined();
   });
 
   it('should return 401 with wrong password', async () => {
@@ -86,7 +87,6 @@ describe('POST /api/auth/login', () => {
   });
 
   it('should return 403 if email is not verified', async () => {
-    // Sign up but do NOT verify
     await request(app).post('/api/auth/signup').send(user);
     const res = await request(app).post('/api/auth/login').send({
       email:    user.email,
@@ -94,5 +94,26 @@ describe('POST /api/auth/login', () => {
     });
     expect(res.status).toBe(403);
     expect(res.body.message).toContain('verify your email');
+  });
+
+  it('should set access_token and refresh_token cookies on login', async () => {
+    await signupAndVerify();
+    const res = await request(app).post('/api/auth/login').send({
+      email:    user.email,
+      password: user.password
+    });
+    const cookies = res.headers['set-cookie'];
+    expect(cookies.some(c => c.startsWith('access_token'))).toBe(true);
+    expect(cookies.some(c => c.startsWith('refresh_token'))).toBe(true);
+  });
+
+  it('should set cookies as HttpOnly', async () => {
+    await signupAndVerify();
+    const res = await request(app).post('/api/auth/login').send({
+      email:    user.email,
+      password: user.password
+    });
+    const cookies = res.headers['set-cookie'];
+    expect(cookies.every(c => c.includes('HttpOnly'))).toBe(true);
   });
 });

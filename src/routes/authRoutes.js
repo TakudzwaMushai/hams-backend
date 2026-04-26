@@ -6,6 +6,7 @@ const auth = require("../middleware/authMiddleware");
 const {
   signup,
   login,
+  refresh,
   logout,
   me,
   verifyEmail,
@@ -48,6 +49,7 @@ const resendValidation = [
 
 router.post("/signup", signupValidation, validate, signup);
 router.post("/login", loginValidation, validate, login);
+router.post("/refresh", refresh);
 router.post("/logout", auth, logout);
 router.get("/me", auth, me);
 router.get("/verify-email", verifyEmail);

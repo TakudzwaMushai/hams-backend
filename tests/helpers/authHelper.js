@@ -20,14 +20,18 @@ const signupAndLogin = async (overrides = {}) => {
     { is_verified: true, verification_token: null, verification_token_expiry: null }
   );
 
+  // Login and capture cookies from response
   const res = await request(app).post('/api/auth/login').send({
     email:    userData.email,
     password: userData.password
   });
 
+  // Extract cookies from Set-Cookie header
+  const cookies = res.headers['set-cookie'];
+
   return {
-    token:    res.body.token,
-    user:     res.body.user,
+    cookies,   // pass these to subsequent requests
+    user:      res.body.user,
     userData
   };
 };
