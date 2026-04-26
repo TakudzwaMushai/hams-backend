@@ -37,12 +37,12 @@ app.use("/api/auth", authRoutes);
 
 app.get("/", (req, res) => res.json({ message: "HAMS API running" }));
 
-// Log URI presence without exposing the value
-console.log("MONGO_URI set:", !!process.env.MONGO_URI);
-
-mongoose
-  .connect(process.env.MONGO_URI)
-  .then(() => console.log("MongoDB connected"))
-  .catch((err) => console.error("MongoDB connection error:", err));
+// Only connect to DB if not in test environment
+if (process.env.NODE_ENV !== "test") {
+  mongoose
+    .connect(process.env.MONGO_URI)
+    .then(() => console.log("MongoDB connected"))
+    .catch((err) => console.error("MongoDB connection error:", err.message));
+}
 
 module.exports = app;
