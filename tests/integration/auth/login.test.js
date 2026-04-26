@@ -1,6 +1,9 @@
 const request = require('supertest');
 const app     = require('../../../src/app');
 const db      = require('../../setup/db');
+const User    = require('../../../src/models/User');
+
+jest.mock('../../../src/utils/sendEmail', () => jest.fn().mockResolvedValue(true));
 
 beforeAll(async () => await db.connect());
 afterEach(async () => await db.clearCollections());
@@ -15,11 +18,17 @@ describe('POST /api/auth/login', () => {
     last_name:  'Smith'
   };
 
-  beforeEach(async () => {
+  // Helper — signup and verify
+  const signupAndVerify = async () => {
     await request(app).post('/api/auth/signup').send(user);
-  });
+    await User.updateOne(
+      { email: user.email },
+      { is_verified: true, verification_token: null, verification_token_expiry: null }
+    );
+  };
 
   it('should login successfully with correct credentials', async () => {
+    await signupAndVerify();
     const res = await request(app).post('/api/auth/login').send({
       email:    user.email,
       password: user.password
@@ -31,6 +40,7 @@ describe('POST /api/auth/login', () => {
   });
 
   it('should return 401 with wrong password', async () => {
+    await signupAndVerify();
     const res = await request(app).post('/api/auth/login').send({
       email:    user.email,
       password: 'WrongPassword123'
@@ -58,6 +68,7 @@ describe('POST /api/auth/login', () => {
   });
 
   it('should not expose password_hash in response', async () => {
+    await signupAndVerify();
     const res = await request(app).post('/api/auth/login').send({
       email:    user.email,
       password: user.password
@@ -66,10 +77,22 @@ describe('POST /api/auth/login', () => {
   });
 
   it('should update last_login on successful login', async () => {
+    await signupAndVerify();
     const res = await request(app).post('/api/auth/login').send({
       email:    user.email,
       password: user.password
     });
     expect(res.body.user.last_login).not.toBeNull();
+  });
+
+  it('should return 403 if email is not verified', async () => {
+    // Sign up but do NOT verify
+    await request(app).post('/api/auth/signup').send(user);
+    const res = await request(app).post('/api/auth/login').send({
+      email:    user.email,
+      password: user.password
+    });
+    expect(res.status).toBe(403);
+    expect(res.body.message).toContain('verify your email');
   });
 });

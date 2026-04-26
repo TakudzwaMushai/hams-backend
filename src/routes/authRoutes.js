@@ -8,6 +8,8 @@ const {
   login,
   logout,
   me,
+  verifyEmail,
+  resendVerification,
   forgotPassword,
   resetPassword,
 } = require("../controllers/authController");
@@ -40,10 +42,21 @@ const resetValidation = [
     .withMessage("Password must be at least 8 characters"),
 ];
 
+const resendValidation = [
+  body("email").isEmail().withMessage("Valid email required"),
+];
+
 router.post("/signup", signupValidation, validate, signup);
 router.post("/login", loginValidation, validate, login);
 router.post("/logout", auth, logout);
 router.get("/me", auth, me);
+router.get("/verify-email", verifyEmail);
+router.post(
+  "/resend-verification",
+  resendValidation,
+  validate,
+  resendVerification,
+);
 router.post("/forgot-password", forgotValidation, validate, forgotPassword);
 router.post("/reset-password", resetValidation, validate, resetPassword);
 
