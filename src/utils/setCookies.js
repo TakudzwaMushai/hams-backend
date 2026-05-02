@@ -7,6 +7,7 @@ const setTokenCookies = (res, { accessToken, refreshToken }) => {
     secure: isProd,
     sameSite: isProd ? "none" : "lax",
     maxAge: 15 * 60 * 1000, // 15 minutes in ms
+    path: "/",
   });
 
   // Refresh token cookie — 7 days
@@ -15,7 +16,7 @@ const setTokenCookies = (res, { accessToken, refreshToken }) => {
     secure: isProd,
     sameSite: isProd ? "none" : "lax",
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in ms
-    path: "/api/auth/refresh", // only sent to refresh endpoint
+    path: "/", // only sent to refresh endpoint
   });
 };
 
@@ -26,13 +27,14 @@ const clearTokenCookies = (res) => {
     httpOnly: true,
     secure: isProd,
     sameSite: isProd ? "none" : "lax",
+    path: "/",
   });
 
   res.clearCookie("refresh_token", {
     httpOnly: true,
     secure: isProd,
     sameSite: isProd ? "none" : "lax",
-    path: "/api/auth/refresh",
+    path: "/",
   });
 };
 
