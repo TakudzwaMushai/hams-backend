@@ -76,7 +76,7 @@ exports.signup = async (req, res) => {
     });
 
     try {
-      const verifyUrl = `${process.env.FRONTEND_URL}/verify-email?token=${verification_token}`;
+      const verifyUrl = `${process.env.FRONTEND_URL}/auth/verify-email?token=${verification_token}`;
       await sendEmail({
         to: user.email,
         subject: "HAMS — Verify Your Email",
