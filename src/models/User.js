@@ -9,9 +9,15 @@ const userSchema = new mongoose.Schema(
       lowercase: true,
       trim: true,
     },
+    // password_hash: {
+    //   type: String,
+    //   required: true,
+    // },
     password_hash: {
       type: String,
-      required: true,
+      required: function () {
+        return this.auth_provider === "local";
+      },
     },
     role: {
       type: String,
