@@ -357,7 +357,7 @@ exports.resendVerification = async (req, res) => {
     await user.save();
 
     try {
-      const verifyUrl = `${process.env.FRONTEND_URL}/verify-email?token=${user.verification_token}`;
+      const verifyUrl = `${process.env.FRONTEND_URL}/auth/verify-email?token=${user.verification_token}`;
       await sendEmail({
         to: user.email,
         subject: "HAMS — Verify Your Email",
@@ -401,7 +401,7 @@ exports.forgotPassword = async (req, res) => {
     await user.save();
 
     try {
-      const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
+      const resetUrl = `${process.env.FRONTEND_URL}/auth/reset-password?token=${resetToken}`;
       await sendEmail({
         to: user.email,
         subject: "HAMS — Password Reset Request",
