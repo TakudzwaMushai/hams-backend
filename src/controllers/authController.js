@@ -6,7 +6,7 @@ const Patient = require("../models/Patient");
 const Doctor = require("../models/Doctor");
 const sendEmail = require("../utils/sendEmail");
 const { setTokenCookies, clearTokenCookies } = require("../utils/setCookies");
-const connectDB = require("../src/config/db");
+const connectDB = require("../config/db");
 
 // ─── SIGNUP ────────────────────────────────────────────────────────────────
 exports.signup = async (req, res) => {
