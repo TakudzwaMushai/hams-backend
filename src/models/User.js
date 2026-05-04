@@ -9,15 +9,10 @@ const userSchema = new mongoose.Schema(
       lowercase: true,
       trim: true,
     },
-    // password_hash: {
-    //   type: String,
-    //   required: true,
-    // },
     password_hash: {
       type: String,
-      required: function () {
-        return this.auth_provider === "local";
-      },
+      default: null,
+      required: false,
     },
     role: {
       type: String,
@@ -31,7 +26,7 @@ const userSchema = new mongoose.Schema(
     ref_type: {
       type: String,
       enum: ["Patient", "Doctor"],
-      required: true,
+      default: "Patient",
     },
     last_login: {
       type: Date,

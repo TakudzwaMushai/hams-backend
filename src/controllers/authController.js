@@ -54,15 +54,6 @@ exports.googleAuthCallback = async (req, res) => {
         email,
       });
 
-      // user = await User.create({
-      //   email,
-      //   role: "patient",
-      //   is_verified: true,
-      //   password_hash: null,
-      //   ref_id: patientProfile._id,
-      //   ref_type: "Patient",
-      // });
-
       user = await User.create({
         email,
         role: "patient",
