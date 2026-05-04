@@ -13,13 +13,11 @@ if (!cached) {
 }
 
 const connectDB = async () => {
-  // ✅ already connected
   if (cached.conn) return cached.conn;
 
-  // ✅ connection in progress
   if (!cached.promise) {
     cached.promise = mongoose.connect(MONGO_URI, {
-      bufferCommands: false, // 🔥 prevents 10s timeout issue
+      bufferCommands: false, 
     });
   }
 
