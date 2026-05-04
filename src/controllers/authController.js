@@ -450,7 +450,7 @@ exports.resetPassword = async (req, res) => {
     user.password_hash = await bcrypt.hash(password, 12);
     user.reset_token = null;
     user.reset_token_expiry = null;
-    user.refresh_token = null; // invalidate all sessions on password reset
+    user.refresh_token = null;
     await user.save();
 
     clearTokenCookies(res);
