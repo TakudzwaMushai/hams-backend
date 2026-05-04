@@ -6,10 +6,12 @@ const Patient = require("../models/Patient");
 const Doctor = require("../models/Doctor");
 const sendEmail = require("../utils/sendEmail");
 const { setTokenCookies, clearTokenCookies } = require("../utils/setCookies");
+const connectDB = require("../src/config/db");
 
 // ─── SIGNUP ────────────────────────────────────────────────────────────────
 exports.signup = async (req, res) => {
   try {
+    await connectDB();
     const {
       role,
       email,
@@ -117,6 +119,7 @@ exports.signup = async (req, res) => {
 // ─── LOGIN ─────────────────────────────────────────────────────────────────
 exports.login = async (req, res) => {
   try {
+    await connectDB();
     const { email, password } = req.body;
 
     const user = await User.findOne({ email });
@@ -182,6 +185,7 @@ exports.login = async (req, res) => {
 // ─── REFRESH ───────────────────────────────────────────────────────────────
 exports.refresh = async (req, res) => {
   try {
+    await connectDB();
     const token = req.cookies?.refresh_token;
 
     if (!token) {
@@ -246,7 +250,7 @@ exports.refresh = async (req, res) => {
 // ─── LOGOUT ────────────────────────────────────────────────────────────────
 exports.logout = async (req, res) => {
   try {
-    // Invalidate refresh token in DB
+    await connectDB();
     await User.findByIdAndUpdate(req.user.id, { refresh_token: null });
 
     // Clear both cookies
@@ -262,6 +266,7 @@ exports.logout = async (req, res) => {
 // ─── ME ────────────────────────────────────────────────────────────────────
 exports.me = async (req, res) => {
   try {
+    await connectDB();
     const user = await User.findById(req.user.id).select(
       "-password_hash -refresh_token -__v",
     );
@@ -293,6 +298,7 @@ exports.me = async (req, res) => {
 // ─── VERIFY EMAIL ──────────────────────────────────────────────────────────
 exports.verifyEmail = async (req, res) => {
   try {
+    await connectDB();
     const { token } = req.query;
 
     if (!token) {
@@ -335,15 +341,14 @@ exports.verifyEmail = async (req, res) => {
 // ─── RESEND VERIFICATION ───────────────────────────────────────────────────
 exports.resendVerification = async (req, res) => {
   try {
+    await connectDB();
     const { email } = req.body;
 
     const user = await User.findOne({ email });
     if (!user) {
-      return res
-        .status(200)
-        .json({
-          message: "If that email exists, a verification link has been sent",
-        });
+      return res.status(200).json({
+        message: "If that email exists, a verification link has been sent",
+      });
     }
 
     if (user.is_verified) {
@@ -372,11 +377,9 @@ exports.resendVerification = async (req, res) => {
       console.error("Resend email failed:", emailErr.message);
     }
 
-    res
-      .status(200)
-      .json({
-        message: "If that email exists, a verification link has been sent",
-      });
+    res.status(200).json({
+      message: "If that email exists, a verification link has been sent",
+    });
   } catch (err) {
     console.error("Resend verification error:", err);
     res.status(500).json({ message: err.message });
@@ -386,6 +389,7 @@ exports.resendVerification = async (req, res) => {
 // ─── FORGOT PASSWORD ───────────────────────────────────────────────────────
 exports.forgotPassword = async (req, res) => {
   try {
+    await connectDB();
     const { email } = req.body;
 
     const user = await User.findOne({ email });
@@ -429,6 +433,7 @@ exports.forgotPassword = async (req, res) => {
 // ─── RESET PASSWORD ────────────────────────────────────────────────────────
 exports.resetPassword = async (req, res) => {
   try {
+    await connectDB();
     const { token, password } = req.body;
 
     const user = await User.findOne({
