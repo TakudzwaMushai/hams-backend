@@ -13,6 +13,8 @@ const {
   resendVerification,
   forgotPassword,
   resetPassword,
+  googleAuthRedirect,
+  googleAuthCallback,
 } = require("../controllers/authController");
 
 const signupValidation = [
@@ -61,5 +63,7 @@ router.post(
 );
 router.post("/forgot-password", forgotValidation, validate, forgotPassword);
 router.post("/reset-password", resetValidation, validate, resetPassword);
+router.get("/google", googleAuthRedirect);
+router.get("/google/callback", googleAuthCallback);
 
 module.exports = router;

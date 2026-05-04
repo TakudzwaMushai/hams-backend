@@ -8,6 +8,84 @@ const sendEmail = require("../utils/sendEmail");
 const { setTokenCookies, clearTokenCookies } = require("../utils/setCookies");
 const connectDB = require("../config/db");
 
+const { OAuth2Client } = require("google-auth-library");
+const client = new OAuth2Client(
+  process.env.GOOGLE_CLIENT_ID,
+  process.env.GOOGLE_CLIENT_SECRET,
+  process.env.GOOGLE_REDIRECT_URI,
+);
+
+// ─── GOOGLE REDIRECT ─────────────────────────────────────────────
+exports.googleAuthRedirect = (req, res) => {
+  const url = client.generateAuthUrl({
+    access_type: "offline",
+    scope: ["email", "profile"],
+    prompt: "consent",
+  });
+
+  res.redirect(url);
+};
+
+exports.googleAuthCallback = async (req, res) => {
+  try {
+    await connectDB();
+
+    const { code } = req.query;
+
+    const { tokens } = await client.getToken(code);
+    client.setCredentials(tokens);
+
+    const ticket = await client.verifyIdToken({
+      idToken: tokens.id_token,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+
+    const { email, given_name, family_name, picture } = payload;
+
+    // 1. Check if user exists
+    let user = await User.findOne({ email });
+
+    // 2. If not create user
+    if (!user) {
+      user = await User.create({
+        email,
+        role: "patient", // default role (you can change this)
+        is_verified: true,
+        password_hash: null,
+      });
+    }
+
+    // 3. Generate tokens (same as login)
+    const accessToken = jwt.sign(
+      { id: user._id, role: user.role },
+      process.env.JWT_ACCESS_SECRET,
+      { expiresIn: process.env.JWT_ACCESS_EXPIRES },
+    );
+
+    const refreshToken = jwt.sign(
+      { id: user._id },
+      process.env.JWT_REFRESH_SECRET,
+      { expiresIn: process.env.JWT_REFRESH_EXPIRES },
+    );
+
+    // 4. Store refresh token
+    user.refresh_token = await bcrypt.hash(refreshToken, 10);
+    user.last_login = new Date();
+    await user.save();
+
+    // 5. Set cookies
+    setTokenCookies(res, { accessToken, refreshToken });
+
+    // 6. Redirect to frontend
+    return res.redirect(`${process.env.FRONTEND_URL}/dashboard/home`);
+  } catch (err) {
+    console.error("Google auth error:", err);
+    return res.redirect(`${process.env.FRONTEND_URL}/auth/login?error=google`);
+  }
+};
+
 // ─── SIGNUP ────────────────────────────────────────────────────────────────
 exports.signup = async (req, res) => {
   try {
