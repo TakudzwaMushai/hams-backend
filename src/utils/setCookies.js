@@ -3,16 +3,16 @@ const setTokenCookies = (res, { accessToken, refreshToken }) => {
 
   res.cookie("access_token", accessToken, {
     httpOnly: true,
-    secure: isProd, // 🔥 only true in production
-    sameSite: isProd ? "none" : "lax", // 🔥 key fix
+    secure: !isProd, // 🔥 only true in production
+    sameSite: "lax", // 🔥 key fix
     maxAge: 15 * 60 * 1000,
     path: "/",
   });
 
   res.cookie("refresh_token", refreshToken, {
     httpOnly: true,
-    secure: isProd,
-    sameSite: isProd ? "none" : "lax",
+    secure: !isProd,
+    sameSite: "lax",
     maxAge: 7 * 24 * 60 * 60 * 1000,
     path: "/",
   });
