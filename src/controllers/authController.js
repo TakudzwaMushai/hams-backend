@@ -44,15 +44,41 @@ exports.googleAuthCallback = async (req, res) => {
 
     const { email, given_name, family_name } = payload;
 
+    // ───── CREATE FULL ACCOUNT IF NEW USER ─────
+    // 1. Find existing user
     let user = await User.findOne({ email });
 
-    // ───── CREATE FULL ACCOUNT IF NEW USER ─────
-    if (!user) {
-      const patientProfile = await Patient.create({
-        first_name: given_name || "",
-        last_name: family_name || "",
-        email,
-      });
+    // 2. If user exists → LOGIN ONLY
+    if (user) {
+      // ensure profile exists (edge case)
+      if (!user.ref_id) {
+        let patientProfile = await Patient.findOne({ email });
+
+        if (!patientProfile) {
+          patientProfile = await Patient.create({
+            first_name: given_name || "",
+            last_name: family_name || "",
+            email,
+          });
+        }
+
+        user.ref_id = patientProfile._id;
+        user.ref_type = "Patient";
+        await user.save();
+      }
+    } else {
+      // 3. NEW USER → CREATE ACCOUNT
+
+      // 🔥 check if patient already exists
+      let patientProfile = await Patient.findOne({ email });
+
+      if (!patientProfile) {
+        patientProfile = await Patient.create({
+          first_name: given_name || "",
+          last_name: family_name || "",
+          email,
+        });
+      }
 
       user = await User.create({
         email,
