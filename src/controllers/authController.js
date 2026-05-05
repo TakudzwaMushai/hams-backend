@@ -224,6 +224,15 @@ exports.login = async (req, res) => {
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
+    // Block password login for Google accounts
+    if (user.auth_provider === "google") {
+      return res.status(403).json({
+        message:
+          "This account was created with Google. Please sign in with Google.",
+        code: "GOOGLE_ACCOUNT",
+      });
+    }
+
     const isMatch = await bcrypt.compare(password, user.password_hash);
     if (!isMatch) {
       return res.status(401).json({ message: "Invalid email or password" });

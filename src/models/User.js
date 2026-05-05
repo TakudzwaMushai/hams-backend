@@ -9,10 +9,14 @@ const userSchema = new mongoose.Schema(
       lowercase: true,
       trim: true,
     },
+    auth_provider: {
+      type: String,
+      enum: ["local", "google"],
+      default: "local",
+    },
     password_hash: {
       type: String,
       default: null,
-      required: false,
     },
     role: {
       type: String,
