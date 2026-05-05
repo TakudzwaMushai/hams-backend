@@ -1,25 +1,22 @@
 const setTokenCookies = (res, { accessToken, refreshToken }) => {
   const isProd = process.env.NODE_ENV === "production";
 
-  // Access token cookie — 15 minutes
   res.cookie("access_token", accessToken, {
     httpOnly: true,
-    secure: true,
-    sameSite: "none",
-    maxAge: 15 * 60 * 1000, // 15 minutes in ms
+    secure: isProd, // 🔥 only true in production
+    sameSite: isProd ? "none" : "lax", // 🔥 key fix
+    maxAge: 15 * 60 * 1000,
     path: "/",
   });
 
-  // Refresh token cookie — 7 days
   res.cookie("refresh_token", refreshToken, {
     httpOnly: true,
-    secure: true,
-    sameSite: "none",
-    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in ms
-    path: "/", // only sent to refresh endpoint
+    secure: isProd,
+    sameSite: isProd ? "none" : "lax",
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+    path: "/",
   });
 };
-
 const clearTokenCookies = (res) => {
   const isProd = process.env.NODE_ENV === "production";
 
