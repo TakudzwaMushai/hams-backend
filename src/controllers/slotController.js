@@ -4,26 +4,19 @@ const User = require("../models/User");
 // POST /api/slots — doctor creates slots
 exports.createSlot = async (req, res) => {
   try {
-    const { slot_date, start_time, end_time } = req.body;
+    const {
+      slot_date,
+      start_time,
+      end_time,
+      consultation_type,
+      location,
+      fee,
+    } = req.body;
 
-    // Get doctor profile from logged in user
     const user = await User.findById(req.user.id);
+
     if (!user || user.role !== "doctor") {
       return res.status(403).json({ message: "Only doctors can create slots" });
-    }
-
-    // Check for overlapping slots
-    const existing = await AvailabilitySlot.findOne({
-      doctor_id: user.ref_id,
-      slot_date: new Date(slot_date),
-      is_blocked: false,
-      $or: [{ start_time: { $lt: end_time }, end_time: { $gt: start_time } }],
-    });
-
-    if (existing) {
-      return res
-        .status(409)
-        .json({ message: "Slot overlaps with an existing slot" });
     }
 
     const slot = await AvailabilitySlot.create({
@@ -31,33 +24,49 @@ exports.createSlot = async (req, res) => {
       slot_date: new Date(slot_date),
       start_time,
       end_time,
+      consultation_type,
+      location: consultation_type === "offline" ? location : null,
+      fee,
     });
 
     res.status(201).json({ message: "Slot created successfully", slot });
   } catch (err) {
-    console.error("Create slot error:", err);
     res.status(500).json({ message: err.message });
   }
 };
 
-// GET /api/slots/:doctorId — get available slots for a doctor
+const mongoose = require("mongoose");
+
 exports.getSlots = async (req, res) => {
   try {
     const { doctorId } = req.params;
-    const { date } = req.query; // optional filter by date
+    const { date, type } = req.query;
 
     const filter = {
       doctor_id: doctorId,
-      is_booked: false,
-      is_blocked: false,
-      slot_date: { $gte: new Date() }, // only future slots
+      // is_booked: false,
+      // is_blocked: false,
     };
+
+    if (type) {
+      filter.consultation_type = type;
+    }
 
     if (date) {
       const start = new Date(date);
+      start.setUTCHours(0, 0, 0, 0);
+
       const end = new Date(date);
-      end.setDate(end.getDate() + 1);
-      filter.slot_date = { $gte: start, $lt: end };
+      end.setUTCHours(23, 59, 59, 999);
+
+      filter.slot_date = {
+        $gte: start,
+        $lte: end,
+      };
+    } else {
+      filter.slot_date = {
+        $gte: new Date(),
+      };
     }
 
     const slots = await AvailabilitySlot.find(filter).sort({
@@ -67,8 +76,9 @@ exports.getSlots = async (req, res) => {
 
     res.status(200).json({ slots });
   } catch (err) {
-    console.error("Get slots error:", err);
-    res.status(500).json({ message: err.message });
+    res.status(500).json({
+      message: err.message,
+    });
   }
 };
 
@@ -89,11 +99,9 @@ exports.deleteSlot = async (req, res) => {
     }
 
     if (slot.is_booked) {
-      return res
-        .status(400)
-        .json({
-          message: "Cannot delete a booked slot. Cancel the appointment first.",
-        });
+      return res.status(400).json({
+        message: "Cannot delete a booked slot. Cancel the appointment first.",
+      });
     }
 
     await slot.deleteOne();

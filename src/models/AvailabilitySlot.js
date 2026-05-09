@@ -6,14 +6,64 @@ const availabilitySlotSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Doctor",
       required: true,
+      index: true,
     },
-    slot_date: { type: Date, required: true },
-    start_time: { type: String, required: true }, // e.g. "09:00"
-    end_time: { type: String, required: true }, // e.g. "09:30"
-    is_booked: { type: Boolean, default: false },
-    is_blocked: { type: Boolean, default: false },
+
+    slot_date: {
+      type: Date,
+      required: true,
+      index: true,
+    },
+
+    start_time: {
+      type: String,
+      required: true,
+    },
+
+    end_time: {
+      type: String,
+      required: true,
+    },
+
+    consultation_type: {
+      type: String,
+      enum: ["online", "offline"],
+      default: "offline",
+    },
+
+    location: {
+      type: String,
+      default: null,
+    },
+
+    fee: {
+      type: Number,
+      default: 0,
+    },
+
+    is_booked: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+
+    is_blocked: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
   },
-  { timestamps: { createdAt: "created_at" } },
+  {
+    timestamps: true,
+  }
 );
 
-module.exports = mongoose.model("AvailabilitySlot", availabilitySlotSchema);
+availabilitySlotSchema.index({
+  doctor_id: 1,
+  slot_date: 1,
+});
+
+module.exports = mongoose.model(
+  "AvailabilitySlot",
+  availabilitySlotSchema
+);

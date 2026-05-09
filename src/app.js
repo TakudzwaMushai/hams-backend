@@ -11,6 +11,8 @@ const { swaggerUi, swaggerDocument } = require("../swagger/swagger");
 const slotRoutes = require("./routes/slotRoutes");
 const appointmentRoutes = require("./routes/appointmentRoutes");
 const authRoutes = require("./routes/authRoutes");
+const doctorRoutes = require("./routes/doctorRoutes");
+const reviewRoutes = require("./routes/reviewRoutes");
 
 const app = express();
 
@@ -25,12 +27,13 @@ app.use(morgan("dev"));
 app.use(express.json());
 app.use(cookieParser());
 
-
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 app.use("/api/auth", authRoutes);
 app.use("/api/slots", slotRoutes);
 app.use("/api/appointments", appointmentRoutes);
+app.use("/api/doctors", doctorRoutes);
+app.use("/api/reviews", reviewRoutes);
 
 app.get("/", (req, res) => res.json({ message: "HAMS API running" }));
 

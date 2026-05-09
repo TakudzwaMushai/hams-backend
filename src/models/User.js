@@ -36,6 +36,10 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    profile_image: {
+      type: String,
+      default: null,
+    },
     refresh_token: { type: String, default: null },
     reset_token: { type: String, default: null },
     reset_token_expiry: { type: Date, default: null },

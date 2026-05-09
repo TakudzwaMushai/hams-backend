@@ -106,9 +106,20 @@ exports.bookAppointment = async (req, res) => {
       },
     });
 
-    res
-      .status(201)
-      .json({ message: "Appointment booked successfully", appointment });
+    res.status(201).json({
+      message: "Appointment booked successfully",
+      appointment: {
+        ...appointment.toObject(),
+        slot_details: {
+          date: slot.slot_date,
+          start_time: slot.start_time,
+          end_time: slot.end_time,
+          type: slot.consultation_type,
+          location: slot.location,
+          fee: slot.fee,
+        },
+      },
+    });
   } catch (err) {
     console.error("Book appointment error:", err);
     res.status(500).json({ message: err.message });
@@ -255,11 +266,9 @@ exports.rescheduleAppointment = async (req, res) => {
         .json({ message: "Not authorised to reschedule this appointment" });
     }
     if (["cancelled", "completed"].includes(appointment.status)) {
-      return res
-        .status(400)
-        .json({
-          message: `Cannot reschedule a ${appointment.status} appointment`,
-        });
+      return res.status(400).json({
+        message: `Cannot reschedule a ${appointment.status} appointment`,
+      });
     }
 
     const newSlot = await AvailabilitySlot.findById(new_slot_id);
@@ -351,11 +360,9 @@ exports.completeAppointment = async (req, res) => {
       return res.status(404).json({ message: "Appointment not found" });
     }
     if (appointment.doctor_id.toString() !== user.ref_id.toString()) {
-      return res
-        .status(403)
-        .json({
-          message: "Only the assigned doctor can complete this appointment",
-        });
+      return res.status(403).json({
+        message: "Only the assigned doctor can complete this appointment",
+      });
     }
     if (appointment.status === "cancelled") {
       return res
