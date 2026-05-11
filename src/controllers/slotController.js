@@ -20,7 +20,7 @@ exports.createSlot = async (req, res) => {
     }
 
     const slot = await AvailabilitySlot.create({
-      doctor_id: user.ref_id,
+      doctor_id: req.user.id, // Changed from user.ref_id to req.user.id
       slot_date: new Date(slot_date),
       start_time,
       end_time,
@@ -44,8 +44,8 @@ exports.getSlots = async (req, res) => {
 
     const filter = {
       doctor_id: doctorId,
-      // is_booked: false,
-      // is_blocked: false,
+      is_booked: false,
+      is_blocked: false,
     };
 
     if (type) {
@@ -64,8 +64,11 @@ exports.getSlots = async (req, res) => {
         $lte: end,
       };
     } else {
+      // Changed from new Date() to start of today to include today's slots
+      const today = new Date();
+      today.setUTCHours(0, 0, 0, 0);
       filter.slot_date = {
-        $gte: new Date(),
+        $gte: today,
       };
     }
 
@@ -92,7 +95,8 @@ exports.deleteSlot = async (req, res) => {
       return res.status(404).json({ message: "Slot not found" });
     }
 
-    if (slot.doctor_id.toString() !== user.ref_id.toString()) {
+    if (slot.doctor_id.toString() !== req.user.id.toString()) {
+      // Changed from user.ref_id
       return res
         .status(403)
         .json({ message: "You can only delete your own slots" });
