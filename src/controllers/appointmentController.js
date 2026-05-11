@@ -1,6 +1,7 @@
 const Appointment = require("../models/Appointment");
 const AvailabilitySlot = require("../models/AvailabilitySlot");
 const EHRRecord = require("../models/EHRRecord");
+const Review = require("../models/Review");
 const User = require("../models/User");
 const Patient = require("../models/Patient");
 const Doctor = require("../models/Doctor");
@@ -141,7 +142,20 @@ exports.getMyAppointments = async (req, res) => {
       .populate("doctor_id", "first_name last_name specialisation")
       .sort({ createdAt: -1 });
 
-    res.status(200).json({ appointments });
+    // Add review flag for each appointment
+    const appointmentsWithReviewFlag = await Promise.all(
+      appointments.map(async (appointment) => {
+        const review = await Review.findOne({
+          appointment_id: appointment._id,
+        });
+        return {
+          ...appointment.toObject(),
+          is_reviewed: !!review,
+        };
+      }),
+    );
+
+    res.status(200).json({ appointments: appointmentsWithReviewFlag });
   } catch (err) {
     console.error("Get appointments error:", err);
     res.status(500).json({ message: err.message });
