@@ -1,41 +1,37 @@
 const setTokenCookies = (res, { accessToken, refreshToken }) => {
   const isProd = process.env.NODE_ENV === "production";
 
-  // Access token cookie — 15 minutes
-  res.cookie("access_token", accessToken, {
+  const cookieOptions = {
     httpOnly: true,
-    secure: isProd,
-    sameSite: isProd ? "none" : "lax",
-    maxAge: 15 * 60 * 1000, // 15 minutes in ms
+    secure: isProd, // must be true in prod for sameSite: none
+    sameSite: isProd ? "none" : "lax", // none required for cross-origin
     path: "/",
+  };
+
+  res.cookie("access_token", accessToken, {
+    ...cookieOptions,
+    maxAge: 15 * 60 * 1000, // 15 minutes
   });
 
-  // Refresh token cookie — 7 days
   res.cookie("refresh_token", refreshToken, {
-    httpOnly: true,
-    secure: isProd,
-    sameSite: isProd ? "none" : "lax",
-    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in ms
-    path: "/", // only sent to refresh endpoint
+    ...cookieOptions,
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
   });
 };
 
 const clearTokenCookies = (res) => {
   const isProd = process.env.NODE_ENV === "production";
 
-  res.clearCookie("access_token", {
+  // clearCookie options must EXACTLY match the options used when setting
+  const cookieOptions = {
     httpOnly: true,
     secure: isProd,
-    sameSite:  "lax",
+    sameSite: isProd ? "none" : "lax", // must match setTokenCookies exactly
     path: "/",
-  });
+  };
 
-  res.clearCookie("refresh_token", {
-    httpOnly: true,
-    secure: isProd,
-    sameSite: "lax",
-    path: "/",
-  });
+  res.clearCookie("access_token", cookieOptions);
+  res.clearCookie("refresh_token", cookieOptions);
 };
 
 module.exports = { setTokenCookies, clearTokenCookies };
