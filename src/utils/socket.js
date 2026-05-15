@@ -2,11 +2,10 @@ let io;
 
 const initSocket = (server) => {
   const { Server } = require("socket.io");
+  const { corsOptions } = require("../config/cors");
+
   io = new Server(server, {
-    cors: {
-      origin: process.env.FRONTEND_URL || "http://localhost:3000",
-      credentials: true,
-    },
+    cors: corsOptions,
   });
 
   io.on("connection", (socket) => {

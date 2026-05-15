@@ -7,6 +7,7 @@ const morgan = require("morgan");
 const mongoose = require("mongoose");
 const cookieParser = require("cookie-parser");
 const { swaggerUi, swaggerDocument } = require("../swagger/swagger");
+const { corsOptions } = require("./config/cors");
 
 const slotRoutes = require("./routes/slotRoutes");
 const appointmentRoutes = require("./routes/appointmentRoutes");
@@ -17,12 +18,7 @@ const reviewRoutes = require("./routes/reviewRoutes");
 const app = express();
 
 app.use(helmet());
-app.use(
-  cors({
-    origin: process.env.FRONTEND_URL || "http://localhost:3000",
-    credentials: true,
-  }),
-);
+app.use(cors(corsOptions));
 app.use(morgan("dev"));
 app.use(express.json());
 app.use(cookieParser());
