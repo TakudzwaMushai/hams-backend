@@ -8,6 +8,10 @@ const Doctor = require("../models/Doctor");
 const sendEmail = require("../utils/sendEmail");
 const { getIO } = require("../utils/socket");
 const templates = require("../utils/emailTemplates");
+const {
+  getPagination,
+  getPaginationMeta,
+} = require("../utils/pagination");
 
 // Helper — get patient and doctor profiles + their user emails
 const getProfiles = async (patientId, doctorId) => {
@@ -33,27 +37,89 @@ const notify = (userId, event, data) => {
   }
 };
 
+const getSlotDateFilter = (timeframe) => {
+  if (!["past", "upcoming"].includes(timeframe)) return null;
+
+  const now = new Date();
+
+  return timeframe === "past" ? { $lt: now } : { $gte: now };
+};
+
 // POST /api/appointments — patient books a slot
 exports.bookAppointment = async (req, res) => {
+  const acquiredSlotIds = [];
+  let bookingPersisted = false;
+
   try {
-    const { slot_id, type, notes } = req.body;
+    const { slot_id, type, notes, repeat } = req.body;
+
+    const repeatConfig = {
+      frequency: repeat?.frequency || "none", // none | weekly | monthly
+      count: Number(repeat?.count || 1),
+    };
+
+    if (
+      repeatConfig.count < 1 ||
+      repeatConfig.count > 60 ||
+      !["none", "weekly", "monthly"].includes(repeatConfig.frequency)
+    ) {
+      return res.status(400).json({
+        message:
+          "Repeat must use frequency none, weekly, or monthly and count between 1 and 60",
+      });
+    }
+
+    const getRepeatDate = (startDate, frequency, index) => {
+      const nextDate = new Date(startDate);
+
+      if (frequency === "weekly") {
+        nextDate.setDate(nextDate.getDate() + index * 7);
+        return nextDate;
+      }
+
+      if (frequency === "monthly") {
+        const targetDay = nextDate.getDate();
+
+        nextDate.setMonth(nextDate.getMonth() + index);
+
+        // Handle month overflow (e.g. Feb 30)
+        if (nextDate.getDate() !== targetDay) {
+          nextDate.setDate(0);
+        }
+
+        return nextDate;
+      }
+
+      return nextDate;
+    };
 
     const user = await User.findById(req.user.id);
+
     if (!user || user.role !== "patient") {
-      return res
-        .status(403)
-        .json({ message: "Only patients can book appointments" });
+      return res.status(403).json({
+        message: "Only patients can book appointments",
+      });
     }
 
-    const slot = await AvailabilitySlot.findById(slot_id);
+    const slot = await AvailabilitySlot.findOneAndUpdate(
+      {
+        _id: slot_id,
+        is_booked: false,
+        is_blocked: false,
+      },
+      { is_booked: true },
+      { new: true },
+    );
+
     if (!slot) {
-      return res.status(404).json({ message: "Slot not found" });
-    }
-    if (slot.is_booked || slot.is_blocked) {
-      return res.status(409).json({ message: "Slot is no longer available" });
+      return res.status(409).json({
+        message: "Slot not found or no longer available",
+      });
     }
 
-    // Create appointment
+    acquiredSlotIds.push(slot._id);
+
+    // MAIN APPOINTMENT
     const appointment = await Appointment.create({
       patient_id: user.ref_id,
       doctor_id: slot.doctor_id,
@@ -62,42 +128,116 @@ exports.bookAppointment = async (req, res) => {
       notes,
     });
 
-    // Mark slot as booked
-    slot.is_booked = true;
-    await slot.save();
+    const appointments = [appointment];
+    const confirmedSlots = [slot];
+    const unavailable_dates = [];
+
+    // RECURRING APPOINTMENTS
+    if (
+      ["weekly", "monthly"].includes(repeatConfig.frequency) &&
+      repeatConfig.count > 1
+    ) {
+      for (let i = 1; i < repeatConfig.count; i++) {
+        const nextDate = getRepeatDate(
+          slot.slot_date,
+          repeatConfig.frequency,
+          i,
+        );
+
+        const startOfDay = new Date(nextDate);
+        startOfDay.setHours(0, 0, 0, 0);
+
+        const endOfDay = new Date(nextDate);
+        endOfDay.setHours(23, 59, 59, 999);
+
+        const nextSlot = await AvailabilitySlot.findOneAndUpdate(
+          {
+            doctor_id: slot.doctor_id,
+            slot_date: {
+              $gte: startOfDay,
+              $lte: endOfDay,
+            },
+            start_time: slot.start_time,
+            is_booked: false,
+            is_blocked: false,
+          },
+          { is_booked: true },
+          { new: true },
+        );
+
+        // Slot unavailable
+        if (!nextSlot) {
+          unavailable_dates.push(nextDate);
+          continue;
+        }
+
+        acquiredSlotIds.push(nextSlot._id);
+
+        // Create repeated appointment
+        const repeatedAppointment = await Appointment.create({
+          patient_id: user.ref_id,
+          doctor_id: nextSlot.doctor_id,
+          slot_id: nextSlot._id,
+          type: type || "in-person",
+          notes,
+        });
+
+        appointments.push(repeatedAppointment);
+        confirmedSlots.push(nextSlot);
+      }
+    }
+
+    bookingPersisted = true;
 
     const { patient, doctor, doctorUser, patientUser } = await getProfiles(
       user.ref_id,
       slot.doctor_id,
     );
 
-    // Email patient
+    // EMAIL PATIENT
     try {
       const patientEmail = templates.appointmentBookedPatient({
         patient,
         doctor,
         slot,
+        appointments,
+        slots: confirmedSlots,
+        repeat: repeatConfig,
+        unavailable_dates,
       });
-      await sendEmail({ to: patientUser.email, ...patientEmail });
+
+      await sendEmail({
+        to: patientUser.email,
+        ...patientEmail,
+      });
     } catch (e) {
       console.error("Patient email failed:", e.message);
     }
 
-    // Email doctor
+    // EMAIL DOCTOR
     try {
       const doctorEmail = templates.appointmentBookedDoctor({
         patient,
         doctor,
         slot,
+        appointments,
+        slots: confirmedSlots,
+        repeat: repeatConfig,
+        unavailable_dates,
       });
-      await sendEmail({ to: doctorUser.email, ...doctorEmail });
+
+      await sendEmail({
+        to: doctorUser.email,
+        ...doctorEmail,
+      });
     } catch (e) {
       console.error("Doctor email failed:", e.message);
     }
 
-    // Notify doctor via websocket
+    // SOCKET NOTIFICATION
     notify(doctorUser._id, "appointment:booked", {
       message: `New appointment booked by ${patient.first_name} ${patient.last_name}`,
+      appointments_count: appointments.length,
       appointment: {
         id: appointment._id,
         patient: `${patient.first_name} ${patient.last_name}`,
@@ -107,23 +247,45 @@ exports.bookAppointment = async (req, res) => {
       },
     });
 
-    res.status(201).json({
-      message: "Appointment booked successfully",
-      appointment: {
-        ...appointment.toObject(),
-        slot_details: {
-          date: slot.slot_date,
-          start_time: slot.start_time,
-          end_time: slot.end_time,
-          type: slot.consultation_type,
-          location: slot.location,
-          fee: slot.fee,
-        },
+    return res.status(201).json({
+      message:
+        appointments.length > 1
+          ? "Recurring appointments booked successfully"
+          : "Appointment booked successfully",
+      booking_status:
+        unavailable_dates.length > 0 ? "partially_confirmed" : "confirmed",
+      requested_count: repeatConfig.count,
+      confirmed_count: appointments.length,
+      unavailable_count: unavailable_dates.length,
+
+      appointments: appointments.map((appt) => ({
+        ...appt.toObject(),
+      })),
+
+      unavailable_dates,
+
+      slot_details: {
+        date: slot.slot_date,
+        start_time: slot.start_time,
+        end_time: slot.end_time,
+        type: slot.consultation_type,
+        location: slot.location,
+        fee: slot.fee,
       },
     });
   } catch (err) {
     console.error("Book appointment error:", err);
-    res.status(500).json({ message: err.message });
+
+    if (!bookingPersisted && acquiredSlotIds.length > 0) {
+      await AvailabilitySlot.updateMany(
+        { _id: { $in: acquiredSlotIds } },
+        { is_booked: false },
+      );
+    }
+
+    return res.status(500).json({
+      message: err.message,
+    });
   }
 };
 
@@ -131,16 +293,67 @@ exports.bookAppointment = async (req, res) => {
 exports.getMyAppointments = async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
+    const { page, limit, skip } = getPagination(req.query);
+    const slotDateFilter = getSlotDateFilter(req.query.timeframe);
     const filter =
       user.role === "patient"
         ? { patient_id: user.ref_id }
         : { doctor_id: user.ref_id };
 
+    const pipeline = [
+      { $match: filter },
+      {
+        $lookup: {
+          from: "availabilityslots",
+          localField: "slot_id",
+          foreignField: "_id",
+          as: "slot",
+        },
+      },
+      { $unwind: "$slot" },
+    ];
+
+    if (slotDateFilter) {
+      pipeline.push({
+        $match: {
+          "slot.slot_date": slotDateFilter,
+        },
+      });
+    }
+
+    const totalResult = await Appointment.aggregate([
+      ...pipeline,
+      { $count: "total" },
+    ]);
+    const totalItems = totalResult[0]?.total || 0;
+
+    const appointmentIds = await Appointment.aggregate([
+      ...pipeline,
+      { $sort: { "slot.slot_date": slotDateFilter?.$lt ? -1 : 1, created_at: -1 } },
+      { $skip: skip },
+      { $limit: limit },
+      { $project: { _id: 1 } },
+    ]);
+
     const appointments = await Appointment.find(filter)
+      .where("_id")
+      .in(appointmentIds.map((appointment) => appointment._id))
       .populate("slot_id")
       .populate("patient_id", "first_name last_name email phone")
-      .populate("doctor_id", "first_name last_name specialisation")
-      .sort({ createdAt: -1 });
+      .populate("doctor_id", "first_name last_name specialisation");
+
+    const appointmentOrder = new Map(
+      appointmentIds.map((appointment, index) => [
+        appointment._id.toString(),
+        index,
+      ]),
+    );
+
+    appointments.sort(
+      (first, second) =>
+        appointmentOrder.get(first._id.toString()) -
+        appointmentOrder.get(second._id.toString()),
+    );
 
     // Add review flag for each appointment
     const appointmentsWithReviewFlag = await Promise.all(
@@ -155,7 +368,10 @@ exports.getMyAppointments = async (req, res) => {
       }),
     );
 
-    res.status(200).json({ appointments: appointmentsWithReviewFlag });
+    res.status(200).json({
+      appointments: appointmentsWithReviewFlag,
+      pagination: getPaginationMeta({ totalItems, page, limit }),
+    });
   } catch (err) {
     console.error("Get appointments error:", err);
     res.status(500).json({ message: err.message });

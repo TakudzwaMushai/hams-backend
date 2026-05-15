@@ -61,6 +61,8 @@ const availabilitySlotSchema = new mongoose.Schema(
 availabilitySlotSchema.index({
   doctor_id: 1,
   slot_date: 1,
+  start_time: 1,
+  end_time: 1,
 });
 
 module.exports = mongoose.model(

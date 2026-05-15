@@ -30,6 +30,8 @@ const appointmentSchema = new mongoose.Schema(
     notes: { type: String, default: null },
     cancellation_reason: { type: String, default: null },
     booked_at: { type: Date, default: Date.now },
+    patient_reminder_sent_at: { type: Date, default: null },
+    doctor_reminder_sent_at: { type: Date, default: null },
   },
   { timestamps: { createdAt: "created_at", updatedAt: "updated_at" } },
 );

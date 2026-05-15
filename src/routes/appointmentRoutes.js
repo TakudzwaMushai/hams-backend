@@ -14,6 +14,14 @@ const {
 
 const bookValidation = [
   body("slot_id").notEmpty().withMessage("Slot ID is required"),
+  body("repeat.frequency")
+    .optional()
+    .isIn(["none", "weekly", "monthly"])
+    .withMessage("Repeat frequency must be none, weekly, or monthly"),
+  body("repeat.count")
+    .optional()
+    .isInt({ min: 1, max: 60 })
+    .withMessage("Repeat count must be between 1 and 60"),
 ];
 
 const completeValidation = [

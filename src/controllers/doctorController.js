@@ -1,6 +1,10 @@
 const Doctor = require("../models/Doctor");
 const Review = require("../models/Review");
 const User = require("../models/User");
+const {
+  getPagination,
+  getPaginationMeta,
+} = require("../utils/pagination");
 
 // GET /api/doctors — list all doctors with optional filters
 exports.getDoctors = async (req, res) => {
@@ -83,14 +87,19 @@ exports.getDoctorById = async (req, res) => {
 exports.getDoctorSlots = async (req, res) => {
   try {
     const AvailabilitySlot = require("../models/AvailabilitySlot");
-    const { date } = req.query;
+    const { date, type } = req.query;
+    const { page, limit, skip } = getPagination(req.query);
 
     const filter = {
       doctor_id: req.params.id,
-    //   is_booked: false,
+      is_booked: false,
       is_blocked: false,
       slot_date: { $gte: new Date() },
     };
+
+    if (type) {
+      filter.consultation_type = type;
+    }
 
     if (date) {
       const start = new Date(date);
@@ -99,12 +108,19 @@ exports.getDoctorSlots = async (req, res) => {
       filter.slot_date = { $gte: start, $lt: end };
     }
 
-    const slots = await AvailabilitySlot.find(filter).sort({
-      slot_date: 1,
-      start_time: 1,
-    });
+    const totalItems = await AvailabilitySlot.countDocuments(filter);
+    const slots = await AvailabilitySlot.find(filter)
+      .sort({
+        slot_date: 1,
+        start_time: 1,
+      })
+      .skip(skip)
+      .limit(limit);
 
-    res.status(200).json({ slots });
+    res.status(200).json({
+      slots,
+      pagination: getPaginationMeta({ totalItems, page, limit }),
+    });
   } catch (err) {
     console.error("Get doctor slots error:", err);
     res.status(500).json({ message: err.message });
