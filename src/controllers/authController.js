@@ -6,6 +6,7 @@ const Patient = require("../models/Patient");
 const Doctor = require("../models/Doctor");
 const sendEmail = require("../utils/sendEmail");
 const { setTokenCookies, clearTokenCookies } = require("../utils/setCookies");
+const templates = require("../utils/emailTemplates");
 const connectDB = require("../config/db");
 
 const { OAuth2Client } = require("google-auth-library");
@@ -204,15 +205,11 @@ exports.signup = async (req, res) => {
       const verifyUrl = `${process.env.FRONTEND_URL}/auth/verify-email?token=${verification_token}`;
       await sendEmail({
         to: user.email,
-        subject: "HAMS — Verify Your Email",
-        html: `
-          <h2>Welcome to HAMS</h2>
-          <p>Hi ${first_name}, thank you for registering.</p>
-          <p>Please verify your email address by clicking the link below:</p>
-          <a href="${verifyUrl}" target="_blank">${verifyUrl}</a>
-          <p>This link expires in <strong>24 hours</strong>.</p>
-          <p>If you did not create an account, please ignore this email.</p>
-        `,
+        ...templates.verifyEmail({
+          firstName: first_name,
+          verifyUrl,
+          expiresIn: "24 hours",
+        }),
       });
     } catch (emailErr) {
       console.error("Verification email failed:", emailErr.message);
@@ -497,13 +494,11 @@ exports.resendVerification = async (req, res) => {
       const verifyUrl = `${process.env.FRONTEND_URL}/auth/verify-email?token=${user.verification_token}`;
       await sendEmail({
         to: user.email,
-        subject: "HAMS — Verify Your Email",
-        html: `
-          <h2>Email Verification</h2>
-          <p>Click the link below to verify your email address:</p>
-          <a href="${verifyUrl}" target="_blank">${verifyUrl}</a>
-          <p>This link expires in <strong>24 hours</strong>.</p>
-        `,
+        ...templates.verifyEmail({
+          firstName: user.first_name,
+          verifyUrl,
+          expiresIn: "24 hours",
+        }),
       });
     } catch (emailErr) {
       console.error("Resend email failed:", emailErr.message);
@@ -540,14 +535,10 @@ exports.forgotPassword = async (req, res) => {
       const resetUrl = `${process.env.FRONTEND_URL}/auth/reset-password?token=${resetToken}`;
       await sendEmail({
         to: user.email,
-        subject: "HAMS — Password Reset Request",
-        html: `
-          <h2>Password Reset</h2>
-          <p>Click the link below to set a new password:</p>
-          <a href="${resetUrl}" target="_blank">${resetUrl}</a>
-          <p>This link expires in <strong>1 hour</strong>.</p>
-          <p>If you did not request this, please ignore this email.</p>
-        `,
+        ...templates.passwordReset({
+          resetUrl,
+          expiresIn: "1 hour",
+        }),
       });
     } catch (emailErr) {
       console.error("Reset email failed:", emailErr.message);
