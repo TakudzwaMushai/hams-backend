@@ -16,6 +16,9 @@ const userSchema = new mongoose.Schema(
     },
     password_hash: {
       type: String,
+      required() {
+        return this.auth_provider !== "google";
+      },
       default: null,
     },
     role: {
