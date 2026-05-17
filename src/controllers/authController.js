@@ -16,6 +16,63 @@ const client = new OAuth2Client(
   process.env.GOOGLE_REDIRECT_URI,
 );
 
+const PATIENT_PROFILE_FIELDS = [
+  "first_name",
+  "last_name",
+  "email",
+  "phone",
+  "date_of_birth",
+  "gender",
+  "nhs_number",
+  "address",
+];
+
+const DOCTOR_PROFILE_FIELDS = [
+  "first_name",
+  "last_name",
+  "email",
+  "phone",
+  "specialisation",
+  "license_number",
+  "experience_years",
+  "fee",
+  "education",
+  "certificate",
+  "bio",
+  "avatar",
+  "availability_types",
+  "clinic_name",
+];
+
+const USER_PROFILE_FIELDS = ["profile_image"];
+
+const normalizeProfilePayload = (body = {}) => {
+  const nestedProfile =
+    body.profile && typeof body.profile === "object" && !Array.isArray(body.profile)
+      ? body.profile
+      : {};
+
+  return { ...body, ...nestedProfile };
+};
+
+const pickDefinedFields = (source, allowedFields) =>
+  allowedFields.reduce((updates, field) => {
+    if (source[field] !== undefined) {
+      updates[field] = source[field];
+    }
+    return updates;
+  }, {});
+
+const publicUserResponse = (user) => ({
+  id: user._id,
+  email: user.email,
+  role: user.role,
+  is_verified: user.is_verified,
+  last_login: user.last_login,
+  created_at: user.created_at,
+  profile_image: user.profile_image,
+});
+
 // ─── GOOGLE REDIRECT ─────────────────────────────────────────────
 exports.googleAuthRedirect = (req, res) => {
   const url = client.generateAuthUrl({
@@ -420,6 +477,108 @@ exports.me = async (req, res) => {
     });
   } catch (err) {
     console.error("Me error:", err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// ─── UPDATE PROFILE ────────────────────────────────────────────────────────
+exports.updateProfile = async (req, res) => {
+  try {
+    await connectDB();
+
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const ProfileModel = user.ref_type === "Patient" ? Patient : Doctor;
+    const allowedProfileFields =
+      user.ref_type === "Patient" ? PATIENT_PROFILE_FIELDS : DOCTOR_PROFILE_FIELDS;
+
+    const currentProfile = await ProfileModel.findById(user.ref_id);
+    if (!currentProfile) {
+      return res.status(404).json({ message: "Profile not found" });
+    }
+
+    const payload = normalizeProfilePayload(req.body);
+    const profileUpdates = pickDefinedFields(payload, allowedProfileFields);
+    const userUpdates = pickDefinedFields(payload, USER_PROFILE_FIELDS);
+
+    if (profileUpdates.address && typeof profileUpdates.address === "object") {
+      const currentAddress = currentProfile.address?.toObject
+        ? currentProfile.address.toObject()
+        : currentProfile.address || {};
+
+      profileUpdates.address = {
+        ...currentAddress,
+        ...profileUpdates.address,
+      };
+    }
+
+    if (profileUpdates.email) {
+      profileUpdates.email = String(profileUpdates.email).trim().toLowerCase();
+      userUpdates.email = profileUpdates.email;
+
+      if (profileUpdates.email !== user.email) {
+        const existingUser = await User.findOne({
+          email: profileUpdates.email,
+          _id: { $ne: user._id },
+        });
+
+        if (existingUser) {
+          return res.status(409).json({ message: "Email already in use" });
+        }
+      }
+    }
+
+    if (user.ref_type === "Doctor" && profileUpdates.license_number) {
+      const existingDoctor = await Doctor.findOne({
+        license_number: profileUpdates.license_number,
+        _id: { $ne: user.ref_id },
+      });
+
+      if (existingDoctor) {
+        return res.status(409).json({ message: "License number already in use" });
+      }
+    }
+
+    if (
+      Object.keys(profileUpdates).length === 0 &&
+      Object.keys(userUpdates).length === 0
+    ) {
+      return res.status(400).json({
+        message: "No editable profile fields provided",
+      });
+    }
+
+    const profile = await ProfileModel.findByIdAndUpdate(
+      user.ref_id,
+      { $set: profileUpdates },
+      { new: true, runValidators: true },
+    ).select("-__v");
+
+    if (Object.keys(userUpdates).length > 0) {
+      Object.assign(user, userUpdates);
+      await user.save();
+    }
+
+    res.status(200).json({
+      message: "Profile updated successfully",
+      user: publicUserResponse(user),
+      profile,
+    });
+  } catch (err) {
+    console.error("Update profile error:", err);
+
+    if (err.code === 11000) {
+      const field = Object.keys(err.keyPattern || {})[0] || "field";
+      return res.status(409).json({ message: `${field} already in use` });
+    }
+
+    if (err.name === "ValidationError") {
+      return res.status(422).json({ message: err.message });
+    }
+
     res.status(500).json({ message: err.message });
   }
 };

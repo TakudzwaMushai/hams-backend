@@ -6,6 +6,7 @@
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "seed:mock": "node scripts/seedMockData.js",
+    "prepare": "husky",
     "test": "NODE_ENV=test jest --config jest.nodb.config.js --detectOpenHandles --forceExit --runInBand",
     "test:unit": "NODE_ENV=test jest tests/unit --config jest.nodb.config.js --detectOpenHandles --forceExit --runInBand",
     "test:integration": "echo \"Database integration tests are disabled to protect MongoDB data.\"",
@@ -34,6 +35,7 @@
     "yamljs": "^0.3.0"
   },
   "devDependencies": {
+    "husky": "^9.1.7",
     "jest": "^30.3.0",
     "nodemon": "^3.1.14",
     "supertest": "^7.2.2"

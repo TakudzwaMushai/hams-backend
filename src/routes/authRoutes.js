@@ -9,6 +9,7 @@ const {
   refresh,
   logout,
   me,
+  updateProfile,
   verifyEmail,
   resendVerification,
   forgotPassword,
@@ -49,11 +50,43 @@ const resendValidation = [
   body("email").isEmail().withMessage("Valid email required"),
 ];
 
+const profileUpdateValidation = [
+  body(["email", "profile.email"])
+    .optional()
+    .isEmail()
+    .withMessage("Valid email required"),
+  body(["gender", "profile.gender"])
+    .optional()
+    .isIn(["male", "female", "other"])
+    .withMessage("Gender must be male, female, or other"),
+  body(["address", "profile.address"])
+    .optional()
+    .isObject()
+    .withMessage("Address must be an object"),
+  body(["experience_years", "profile.experience_years"])
+    .optional()
+    .isInt({ min: 0 })
+    .withMessage("Experience years must be a positive number"),
+  body(["fee", "profile.fee"])
+    .optional()
+    .isFloat({ min: 0 })
+    .withMessage("Fee must be a positive number"),
+  body(["availability_types", "profile.availability_types"])
+    .optional()
+    .isArray()
+    .withMessage("Availability types must be an array"),
+  body(["availability_types.*", "profile.availability_types.*"])
+    .optional()
+    .isIn(["Online Consultation", "In-Person"])
+    .withMessage("Availability type must be Online Consultation or In-Person"),
+];
+
 router.post("/signup", signupValidation, validate, signup);
 router.post("/login", loginValidation, validate, login);
 router.post("/refresh", refresh);
 router.post("/logout", auth, logout);
 router.get("/me", auth, me);
+router.patch("/profile", auth, profileUpdateValidation, validate, updateProfile);
 router.get("/verify-email", verifyEmail);
 router.post(
   "/resend-verification",

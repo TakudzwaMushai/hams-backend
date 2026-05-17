@@ -8,6 +8,7 @@ describe("Swagger documentation", () => {
       "post /auth/refresh",
       "post /auth/logout",
       "get /auth/me",
+      "patch /auth/profile",
       "get /auth/verify-email",
       "post /auth/resend-verification",
       "post /auth/forgot-password",

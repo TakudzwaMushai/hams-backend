@@ -182,6 +182,41 @@ const swaggerDocument = {
           },
         },
       },
+      ProfileUpdateRequest: {
+        type: "object",
+        description:
+          "Send editable patient or doctor profile fields. Fields can also be sent inside a profile object.",
+        properties: {
+          first_name: { type: "string" },
+          last_name: { type: "string" },
+          email: { type: "string", format: "email" },
+          phone: { type: "string" },
+          profile_image: { type: "string" },
+          date_of_birth: { type: "string", format: "date" },
+          gender: { type: "string", enum: ["male", "female", "other"] },
+          nhs_number: { type: "string" },
+          address: { $ref: "#/components/schemas/Address" },
+          specialisation: { type: "string" },
+          license_number: { type: "string" },
+          experience_years: { type: "number" },
+          fee: { type: "number" },
+          education: { type: "string" },
+          certificate: { type: "string" },
+          bio: { type: "string" },
+          avatar: { type: "string" },
+          availability_types: {
+            type: "array",
+            items: { type: "string", enum: ["Online Consultation", "In-Person"] },
+          },
+          clinic_name: { type: "string" },
+          profile: {
+            oneOf: [
+              { $ref: "#/components/schemas/PatientProfile" },
+              { $ref: "#/components/schemas/DoctorProfile" },
+            ],
+          },
+        },
+      },
       Repeat: {
         type: "object",
         properties: {
@@ -402,6 +437,82 @@ const swaggerDocument = {
           },
           ...authResponses,
           404: { description: "User not found" },
+          ...serverError,
+        },
+      },
+    },
+    "/auth/profile": {
+      patch: {
+        summary: "Update the current user's patient or doctor profile",
+        tags: ["Auth"],
+        security: [{ cookieAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/ProfileUpdateRequest" },
+              examples: {
+                patient: {
+                  value: {
+                    first_name: "Jane",
+                    last_name: "Moyo",
+                    phone: "+263771000001",
+                    date_of_birth: "1995-04-12",
+                    gender: "female",
+                    nhs_number: "HAMS-PT-001",
+                    address: {
+                      line1: "12 Willow Street",
+                      city: "London",
+                      postcode: "SW1A 1AA",
+                    },
+                    profile_image: "https://example.com/jane.jpg",
+                  },
+                },
+                doctor: {
+                  value: {
+                    first_name: "Alan",
+                    last_name: "Carter",
+                    phone: "+263772000001",
+                    specialisation: "General Practitioner",
+                    license_number: "HAMS-DOC-001",
+                    experience_years: 12,
+                    fee: 45,
+                    education: "MBChB, University of Zimbabwe",
+                    bio: "Primary care doctor.",
+                    avatar: "https://example.com/doctor.jpg",
+                    availability_types: ["Online Consultation", "In-Person"],
+                    clinic_name: "HAMS Central Clinic",
+                  },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: {
+            description: "Profile updated successfully",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    message: { type: "string" },
+                    user: { $ref: "#/components/schemas/UserResponse" },
+                    profile: {
+                      oneOf: [
+                        { $ref: "#/components/schemas/PatientProfile" },
+                        { $ref: "#/components/schemas/DoctorProfile" },
+                      ],
+                    },
+                  },
+                },
+              },
+            },
+          },
+          400: { description: "No editable profile fields provided" },
+          409: { description: "Email or license number already in use" },
+          422: { description: "Validation errors" },
+          ...authResponses,
           ...serverError,
         },
       },
